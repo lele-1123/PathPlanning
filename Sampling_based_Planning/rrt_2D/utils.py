@@ -1,5 +1,5 @@
 """
-utils for collision check
+utils for collision check  # 碰撞检测的utils
 @author: huiming zhou
 """
 
@@ -19,21 +19,21 @@ class Utils:
     def __init__(self):
         self.env = env.Env()
 
-        self.delta = 0.5
+        self.delta = 0.5  # 增量变量？
         self.obs_circle = self.env.obs_circle
         self.obs_rectangle = self.env.obs_rectangle
         self.obs_boundary = self.env.obs_boundary
 
-    def update_obs(self, obs_cir, obs_bound, obs_rec):
+    def update_obs(self, obs_cir, obs_bound, obs_rec):  # 更新障碍物：圆，边界，矩形
         self.obs_circle = obs_cir
         self.obs_boundary = obs_bound
         self.obs_rectangle = obs_rec
 
-    def get_obs_vertex(self):
+    def get_obs_vertex(self):  # 获得障碍物的顶点
         delta = self.delta
         obs_list = []
 
-        for (ox, oy, w, h) in self.obs_rectangle:
+        for (ox, oy, w, h) in self.obs_rectangle:  # 矩形障碍物增大范围
             vertex_list = [[ox - delta, oy - delta],
                            [ox + w + delta, oy - delta],
                            [ox + w + delta, oy + h + delta],
@@ -42,14 +42,14 @@ class Utils:
 
         return obs_list
 
-    def is_intersect_rec(self, start, end, o, d, a, b):
-        v1 = [o[0] - a[0], o[1] - a[1]]
+    def is_intersect_rec(self, start, end, o, d, a, b):  # 与矩形障碍物碰撞，o:start[x,y], d:end-start[x,y], a和d矩形边的顶点
+        v1 = [o[0] - a[0], o[1] - a[1]]  # 看作向量v1 v2 v3
         v2 = [b[0] - a[0], b[1] - a[1]]
         v3 = [-d[1], d[0]]
 
-        div = np.dot(v2, v3)
+        div = np.dot(v2, v3)  # 内积
 
-        if div == 0:
+        if div == 0:  # 由start到end点的直线与障碍物边线平行
             return False
 
         t1 = np.linalg.norm(np.cross(v2, v1)) / div
@@ -64,23 +64,23 @@ class Utils:
 
         return False
 
-    def is_intersect_circle(self, o, d, a, r):
+    def is_intersect_circle(self, o, d, a, r):  # 与圆形障碍物碰撞，o:start[x,y], d:end-start[x,y], a:圆心[x,y], r:半径
         d2 = np.dot(d, d)
         delta = self.delta
 
-        if d2 == 0:
+        if d2 == 0:  # 被除数不可以为0
             return False
 
         t = np.dot([a[0] - o[0], a[1] - o[1]], d) / d2
 
         if 0 <= t <= 1:
-            shot = Node((o[0] + t * d[0], o[1] + t * d[1]))
+            shot = Node((o[0] + t * d[0], o[1] + t * d[1]))  # 直线上距离圆心最近的点
             if self.get_dist(shot, Node(a)) <= r + delta:
                 return True
 
         return False
 
-    def is_collision(self, start, end):
+    def is_collision(self, start, end):  # 是否碰撞
         if self.is_inside_obs(start) or self.is_inside_obs(end):
             return True
 
@@ -88,7 +88,7 @@ class Utils:
         obs_vertex = self.get_obs_vertex()
 
         for (v1, v2, v3, v4) in obs_vertex:
-            if self.is_intersect_rec(start, end, o, d, v1, v2):
+            if self.is_intersect_rec(start, end, o, d, v1, v2):  # 是否与矩形障碍物的边碰撞
                 return True
             if self.is_intersect_rec(start, end, o, d, v2, v3):
                 return True
@@ -98,24 +98,24 @@ class Utils:
                 return True
 
         for (x, y, r) in self.obs_circle:
-            if self.is_intersect_circle(o, d, [x, y], r):
+            if self.is_intersect_circle(o, d, [x, y], r):  # 是否与圆形障碍物碰撞
                 return True
 
         return False
 
-    def is_inside_obs(self, node):
+    def is_inside_obs(self, node):  # 是否在障碍物里
         delta = self.delta
 
-        for (x, y, r) in self.obs_circle:
+        for (x, y, r) in self.obs_circle:  # 是否在圆形障碍物里
             if math.hypot(node.x - x, node.y - y) <= r + delta:
                 return True
 
-        for (x, y, w, h) in self.obs_rectangle:
+        for (x, y, w, h) in self.obs_rectangle:  # 是否在矩形障碍物里
             if 0 <= node.x - (x - delta) <= w + 2 * delta \
                     and 0 <= node.y - (y - delta) <= h + 2 * delta:
                 return True
 
-        for (x, y, w, h) in self.obs_boundary:
+        for (x, y, w, h) in self.obs_boundary:  # 是否在边界墙里
             if 0 <= node.x - (x - delta) <= w + 2 * delta \
                     and 0 <= node.y - (y - delta) <= h + 2 * delta:
                 return True
@@ -129,5 +129,5 @@ class Utils:
         return orig, direc
 
     @staticmethod
-    def get_dist(start, end):
+    def get_dist(start, end):  # 获得start和end两点的直线距离
         return math.hypot(end.x - start.x, end.y - start.y)

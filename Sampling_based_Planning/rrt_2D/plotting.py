@@ -33,9 +33,9 @@ class Plotting:
         self.plot_path(path)
 
     def plot_grid(self, name):
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots()  # 在画布上创建一个图
 
-        for (ox, oy, w, h) in self.obs_bound:
+        for (ox, oy, w, h) in self.obs_bound:  # 向图片里面添加边界墙，黑色填充
             ax.add_patch(
                 patches.Rectangle(
                     (ox, oy), w, h,
@@ -45,7 +45,7 @@ class Plotting:
                 )
             )
 
-        for (ox, oy, w, h) in self.obs_rectangle:
+        for (ox, oy, w, h) in self.obs_rectangle:  # 向图片里面添加矩形障碍物
             ax.add_patch(
                 patches.Rectangle(
                     (ox, oy), w, h,
@@ -55,7 +55,7 @@ class Plotting:
                 )
             )
 
-        for (ox, oy, r) in self.obs_circle:
+        for (ox, oy, r) in self.obs_circle:  # 向图片里面添加圆形障碍物
             ax.add_patch(
                 patches.Circle(
                     (ox, oy), r,
@@ -65,11 +65,11 @@ class Plotting:
                 )
             )
 
-        plt.plot(self.xI[0], self.xI[1], "bs", linewidth=3)
-        plt.plot(self.xG[0], self.xG[1], "gs", linewidth=3)
+        plt.plot(self.xI[0], self.xI[1], "bs", linewidth=3)  # 绘制起点，蓝色方形
+        plt.plot(self.xG[0], self.xG[1], "gs", linewidth=3)  # 绘制终点，绿色方形
 
-        plt.title(name)
-        plt.axis("equal")
+        plt.title(name)  # 添加标题name
+        plt.axis("equal")  # x,y轴刻度等长
 
     @staticmethod
     def plot_visited(nodelist, animation):
@@ -81,8 +81,8 @@ class Plotting:
                     plt.plot([node.parent.x, node.x], [node.parent.y, node.y], "-g")
                     plt.gcf().canvas.mpl_connect('key_release_event',
                                                  lambda event:
-                                                 [exit(0) if event.key == 'escape' else None])
-                    if count % 10 == 0:
+                                                 [exit(0) if event.key == 'escape' else None])  # 按ESC退出
+                    if count % 10 == 0:  # 用于实现动画效果
                         plt.pause(0.001)
         else:
             for node in nodelist:

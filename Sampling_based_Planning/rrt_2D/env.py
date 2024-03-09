@@ -15,7 +15,7 @@ class Env:
     @staticmethod
     def obs_boundary():
         obs_boundary = [
-            [0, 0, 1, 30],  # [左下角起始点x, y, 边界墙的长x, 高y]
+            [0, 0, 1, 30],  # [左下角起始点x, y, 边界墙的宽x, 高y]
             [0, 30, 50, 1],
             [1, 0, 50, 1],
             [50, 1, 1, 30]
@@ -25,7 +25,7 @@ class Env:
     @staticmethod
     def obs_rectangle():
         obs_rectangle = [
-            [14, 12, 8, 2],  # [矩形左下角x, y, 矩形的长x, 高y]
+            [14, 12, 8, 2],  # [矩形左下角x, y, 矩形的宽x, 高y]
             [18, 22, 8, 3],
             [26, 7, 2, 12],
             [32, 14, 10, 2]

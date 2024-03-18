@@ -14,7 +14,7 @@ class Node:
         self.x = n[0]
         self.y = n[1]
         self.parent = None
-        self.cost = 0.0
+        self.cost = 0
 
 
 class RrtStar:
@@ -49,25 +49,20 @@ class RrtStar:
                 print(k)
 
             if node_new and not self.utils.is_collision(node_near, node_new):  # node_near到node_new是否与障碍物碰撞 =6
-                neighbor_index = self.find_near_neighbor(node_new)          # 选取node_new附近的点集 =7
+                neighbor_index = self.find_near_neighbor(node_new)          # 选取node_new附近的点集, 且不会发生碰撞 =7
                 self.vertex.append(node_new)                                # 添加新点到树的顶点(图的点集合)中 =8
+                node_new.parent = node_near
+                node_new.cost = self.get_new_cost(node_near, node_new)      # 先设定node_near为node_new的父节点 =9
 
                 if neighbor_index:
                     self.choose_parent(node_new, neighbor_index)            # connect along a minimum-cost path
                     self.rewire(node_new, neighbor_index)                   # rewire the tree
 
-                # dist, _ = self.get_distance_and_angle(node_new, self.s_goal)  # 计算新点到终点的距离
-                # if dist <= self.step_len and not self.utils.is_collision(node_new, self.s_goal):  # 判断下一步是否可以直接到终点
-                #     self.s_goal.parent = node_new
-                #     self.path = self.extract_path(self.s_goal)  # 提取路径
-                #     break
-
         index = self.search_goal_parent()
-        self.path = self.extract_path(self.vertex[index])
-        if self.path:
-            self.plotting.animation(self.vertex, self.path, "RRT* N = " + str(self.iter_max))  # 绘制图像
-        else:
-            print("No Path Found!")
+        self.s_goal.parent = self.vertex[index]
+        self.path = self.extract_path(self.s_goal)
+
+        self.plotting.animation(self.vertex, self.path, "RRT*, N = " + str(self.iter_max))  # 绘制图像
 
     def new_state(self, node_start, node_goal):
         dist, theta = self.get_distance_and_angle(node_start, node_goal)
@@ -83,9 +78,11 @@ class RrtStar:
     def choose_parent(self, node_new, neighbor_index):
         cost = [self.get_new_cost(self.vertex[i], node_new) for i in neighbor_index]
         cost_index = int(np.argmin(cost))
-        cost_min_index = neighbor_index[cost_index]
-        node_new.parent = self.vertex[cost_min_index]
-        node_new.cost = cost[cost_index]
+
+        if node_new.cost > cost[cost_index]:
+            cost_min_index = neighbor_index[cost_index]
+            node_new.parent = self.vertex[cost_min_index]
+            node_new.cost = cost[cost_index]
 
     def rewire(self, node_new, neighbor_index):
         for i in neighbor_index:
@@ -98,17 +95,20 @@ class RrtStar:
 
     def search_goal_parent(self):
         dist_list = [math.hypot(n.x - self.s_goal.x, n.y - self.s_goal.y) for n in self.vertex]
-        node_index = [i for i in range(len(dist_list)) if dist_list[i] <= self.step_len]
+        node_index = [i for i in range(len(dist_list))
+                      if dist_list[i] <= self.step_len and not self.utils.is_collision(self.vertex[i], self.s_goal)]
 
         if len(node_index) > 0:
-            cost_list = [dist_list[i] + self.vertex[i].cost for i in node_index
-                         if not self.utils.is_collision(self.vertex[i], self.s_goal)]
-            return node_index[int(np.argmin(cost_list))]  # 如果上面的if有不满足的，这条语句会出错; 但是终点附近应该都满足
+            cost_list = [dist_list[i] + self.vertex[i].cost for i in node_index]
+            return node_index[int(np.argmin(cost_list))]
 
         return len(self.vertex) - 1
 
     def get_new_cost(self, node_start, node_end):
         dist, _ = self.get_distance_and_angle(node_start, node_end)
+
+        if node_start == 0:
+            return self.cost_node(node_start) + dist
 
         return node_start.cost + dist
 
@@ -137,7 +137,7 @@ class RrtStar:
                                         for nd in node_list]))]
 
     @staticmethod
-    def cost(node_p):
+    def cost_node(node_p):
         node = node_p
         cost = 0.0
 
@@ -161,14 +161,13 @@ class RrtStar:
     #             node_c.Cost = self.get_new_cost(node, node_c)
     #             OPEN.put(node_c)
 
-    def extract_path(self, node_end):
-        path = [[self.s_goal.x, self.s_goal.y]]
-        node = node_end
+    def extract_path(self, node_end):  # 提取路径
+        path = [(self.s_goal.x, self.s_goal.y)]
+        node_now = node_end
 
-        while node.parent is not None:
-            path.append([node.x, node.y])
-            node = node.parent
-        path.append([node.x, node.y])
+        while node_now.parent is not None:
+            node_now = node_now.parent
+            path.append((node_now.x, node_now.y))
 
         return path
 
@@ -183,7 +182,7 @@ def main():
     x_start = (18, 8)  # Starting node
     x_goal = (37, 18)  # Goal node
 
-    rrt_star = RrtStar(x_start, x_goal, 10, 0.10, 20, 10000)
+    rrt_star = RrtStar(x_start, x_goal, 10, 0.10, 20, 8000)
     rrt_star.planning()
 
 

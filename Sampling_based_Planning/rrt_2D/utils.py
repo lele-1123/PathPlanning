@@ -80,7 +80,7 @@ class Utils:
 
         return False
 
-    def is_collision(self, start, end):  # 是否碰撞
+    def is_collision(self, start, end):  # 路径是否与障碍物碰撞
         if self.is_inside_obs(start) or self.is_inside_obs(end):
             return True
 

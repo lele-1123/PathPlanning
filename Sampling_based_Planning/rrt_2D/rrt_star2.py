@@ -6,7 +6,7 @@ RRT_star 2D
 import math
 import numpy as np
 
-from Sampling_based_Planning.rrt_2D import env, plotting, utils, queue
+from Sampling_based_Planning.rrt_2D import env, plotting, utils
 
 
 class Node:
@@ -45,8 +45,8 @@ class RrtStar:
             node_near = self.nearest_neighbor(self.vertex, node_rand)       # 在树中选择距离随机点最近的点 =4
             node_new = self.new_state(node_near, node_rand)                 # 确定输入，产生由node_near到node_rand的新点 =5
 
-            # if k % 500 == 0:
-            #     print(k)
+            if k % 500 == 0:
+                print(k)
 
             if node_new and not self.utils.is_collision(node_near, node_new):  # node_near到node_new是否与障碍物碰撞 =6
                 neighbor_index = self.find_near_neighbor(node_new)          # 选取node_new附近的点集 =7
@@ -56,10 +56,18 @@ class RrtStar:
                     self.choose_parent(node_new, neighbor_index)            # connect along a minimum-cost path
                     self.rewire(node_new, neighbor_index)                   # rewire the tree
 
+                # dist, _ = self.get_distance_and_angle(node_new, self.s_goal)  # 计算新点到终点的距离
+                # if dist <= self.step_len and not self.utils.is_collision(node_new, self.s_goal):  # 判断下一步是否可以直接到终点
+                #     self.s_goal.parent = node_new
+                #     self.path = self.extract_path(self.s_goal)  # 提取路径
+                #     break
+
         index = self.search_goal_parent()
         self.path = self.extract_path(self.vertex[index])
-
-        self.plotting.animation(self.vertex, self.path, "rrt*, N = " + str(self.iter_max))
+        if self.path:
+            self.plotting.animation(self.vertex, self.path, "RRT* N = " + str(self.iter_max))  # 绘制图像
+        else:
+            print("No Path Found!")
 
     def new_state(self, node_start, node_goal):
         dist, theta = self.get_distance_and_angle(node_start, node_goal)
@@ -74,32 +82,35 @@ class RrtStar:
 
     def choose_parent(self, node_new, neighbor_index):
         cost = [self.get_new_cost(self.vertex[i], node_new) for i in neighbor_index]
-
-        cost_min_index = neighbor_index[int(np.argmin(cost))]
+        cost_index = int(np.argmin(cost))
+        cost_min_index = neighbor_index[cost_index]
         node_new.parent = self.vertex[cost_min_index]
+        node_new.cost = cost[cost_index]
 
     def rewire(self, node_new, neighbor_index):
         for i in neighbor_index:
             node_neighbor = self.vertex[i]
+            cost_rewire = self.get_new_cost(node_new, node_neighbor)
 
-            if self.cost(node_neighbor) > self.get_new_cost(node_new, node_neighbor):
+            if node_neighbor.cost > cost_rewire:
                 node_neighbor.parent = node_new
+                node_neighbor.cost = cost_rewire
 
     def search_goal_parent(self):
         dist_list = [math.hypot(n.x - self.s_goal.x, n.y - self.s_goal.y) for n in self.vertex]
         node_index = [i for i in range(len(dist_list)) if dist_list[i] <= self.step_len]
 
         if len(node_index) > 0:
-            cost_list = [dist_list[i] + self.cost(self.vertex[i]) for i in node_index
+            cost_list = [dist_list[i] + self.vertex[i].cost for i in node_index
                          if not self.utils.is_collision(self.vertex[i], self.s_goal)]
-            return node_index[int(np.argmin(cost_list))]  # 如果上面的if有不满足的，这条语句会出错
+            return node_index[int(np.argmin(cost_list))]  # 如果上面的if有不满足的，这条语句会出错; 但是终点附近应该都满足
 
         return len(self.vertex) - 1
 
     def get_new_cost(self, node_start, node_end):
         dist, _ = self.get_distance_and_angle(node_start, node_end)
 
-        return self.cost(node_start) + dist
+        return node_start.cost + dist
 
     def generate_random_node(self, goal_sample_rate):
         delta = self.utils.delta
@@ -136,19 +147,19 @@ class RrtStar:
 
         return cost
 
-    def update_cost(self, parent_node):
-        OPEN = queue.QueueFIFO()
-        OPEN.put(parent_node)
-
-        while not OPEN.empty():
-            node = OPEN.get()
-
-            if len(node.child) == 0:
-                continue
-
-            for node_c in node.child:
-                node_c.Cost = self.get_new_cost(node, node_c)
-                OPEN.put(node_c)
+    # def update_cost(self, parent_node):
+    #     OPEN = queue.QueueFIFO()
+    #     OPEN.put(parent_node)
+    #
+    #     while not OPEN.empty():
+    #         node = OPEN.get()
+    #
+    #         if len(node.child) == 0:
+    #             continue
+    #
+    #         for node_c in node.child:
+    #             node_c.Cost = self.get_new_cost(node, node_c)
+    #             OPEN.put(node_c)
 
     def extract_path(self, node_end):
         path = [[self.s_goal.x, self.s_goal.y]]

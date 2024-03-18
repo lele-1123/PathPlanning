@@ -8,8 +8,8 @@ import sys
 import math
 import numpy as np
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
-                "/../../Sampling_based_Planning/")
+# sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
+#                 "/../../Sampling_based_Planning/")
 
 from Sampling_based_Planning.rrt_2D import env, plotting, utils, queue
 
@@ -45,20 +45,20 @@ class RrtStar:
 
     def planning(self):
         for k in range(self.iter_max):
-            node_rand = self.generate_random_node(self.goal_sample_rate)
-            node_near = self.nearest_neighbor(self.vertex, node_rand)
-            node_new = self.new_state(node_near, node_rand)
+            node_rand = self.generate_random_node(self.goal_sample_rate)    # 产生随机点 =3(伪代码中的行数)
+            node_near = self.nearest_neighbor(self.vertex, node_rand)       # 在树中选择距离随机点最近的点 =4
+            node_new = self.new_state(node_near, node_rand)                 # 确定输入，产生由node_near到node_rand的新点 =5
 
             if k % 500 == 0:
                 print(k)
 
-            if node_new and not self.utils.is_collision(node_near, node_new):
-                neighbor_index = self.find_near_neighbor(node_new)
-                self.vertex.append(node_new)
+            if node_new and not self.utils.is_collision(node_near, node_new):  # node_near到node_new是否与障碍物碰撞 =6
+                neighbor_index = self.find_near_neighbor(node_new)          # 选取node_new附近的点集 =7
+                self.vertex.append(node_new)                                # 添加新点到树的顶点(图的点集合)中 =8
 
                 if neighbor_index:
-                    self.choose_parent(node_new, neighbor_index)
-                    self.rewire(node_new, neighbor_index)
+                    self.choose_parent(node_new, neighbor_index)            # connect along a minimum-cost path
+                    self.rewire(node_new, neighbor_index)                   # rewire the tree
 
         index = self.search_goal_parent()
         self.path = self.extract_path(self.vertex[index])
@@ -96,7 +96,7 @@ class RrtStar:
         if len(node_index) > 0:
             cost_list = [dist_list[i] + self.cost(self.vertex[i]) for i in node_index
                          if not self.utils.is_collision(self.vertex[i], self.s_goal)]
-            return node_index[int(np.argmin(cost_list))]
+            return node_index[int(np.argmin(cost_list))]  # 如果上面的if有不满足的，这条语句会出错
 
         return len(self.vertex) - 1
 

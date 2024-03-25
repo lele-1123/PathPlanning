@@ -99,8 +99,8 @@ class IRrtStar:
                             self.x_goal.parent = x_new
                             self.x_goal.cost = new_cost
 
-            # if k % 20 == 0:
-            #     self.animation(x_center=x_center, c_best=c_best, dist=dist, theta=theta)
+            if k % 20 == 0:
+                self.animation(x_center=x_center, c_best=c_best, dist=dist, theta=theta)
 
         self.path = self.ExtractPath()
         t2 = time.perf_counter()
@@ -123,8 +123,8 @@ class IRrtStar:
 
     def Near(self, nodelist, node):
         n = len(nodelist) + 1
-        # r = 50 * math.sqrt((math.log(n) / n))  # 为什么确定为这个？
-        r = min(self.search_radius * math.sqrt((math.log(n) / n)), self.step_len)
+        r = 50 * math.sqrt((math.log(n) / n))  # 为什么确定为这个？
+        # r = min(self.search_radius * math.sqrt((math.log(n) / n)), self.step_len)
 
         dist_table = [(nd.x - node.x) ** 2 + (nd.y - node.y) ** 2 for nd in nodelist]
         X_near = [nodelist[ind] for ind in range(n - 1) if dist_table[ind] <= r ** 2]
@@ -167,7 +167,7 @@ class IRrtStar:
         return self.x_goal
 
     def ExtractPath(self):  # 提取路径
-        path = [[self.x_goal.x, self.x_goal.y]]
+        path = [(self.x_goal.x, self.x_goal.y)]
         node_now = self.x_goal
 
         while node_now.parent is not None:
@@ -306,7 +306,7 @@ def main():
     x_start = (18, 8)  # Starting node
     x_goal = (39, 18)  # Goal node
 
-    rrt_star = IRrtStar(x_start, x_goal, 15, 0.10, 30, 3000)
+    rrt_star = IRrtStar(x_start, x_goal, 1, 0.10, 30, 3000)
     rrt_star.planning()
 
 

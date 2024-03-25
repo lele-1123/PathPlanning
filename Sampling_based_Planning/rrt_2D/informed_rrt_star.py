@@ -109,6 +109,7 @@ class IRrtStar:
         self.path = self.ExtractPath(x_best)
         t2 = time.perf_counter()
         t = int(t2 - t1)
+        c_best += self.Line(x_best, self.x_goal)
         print("the cost of path is " + str(c_best))
         print("the time is " + str(t) + " seconds")
         self.animation(x_center=x_center, c_best=c_best, dist=dist, theta=theta)

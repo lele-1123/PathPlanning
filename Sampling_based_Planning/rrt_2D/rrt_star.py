@@ -7,6 +7,7 @@ import os
 import sys
 import math
 import numpy as np
+import time
 
 # sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
 #                 "/../../Sampling_based_Planning/")
@@ -44,6 +45,7 @@ class RrtStar:
         self.obs_boundary = self.env.obs_boundary
 
     def planning(self):
+        t1 = time.perf_counter()
         for k in range(self.iter_max):
             node_rand = self.generate_random_node(self.goal_sample_rate)    # 产生随机点 =3(伪代码中的行数)
             node_near = self.nearest_neighbor(self.vertex, node_rand)       # 在树中选择距离随机点最近的点 =4
@@ -62,8 +64,12 @@ class RrtStar:
 
         index = self.search_goal_parent()
         self.path = self.extract_path(self.vertex[index])
+        t2 = time.perf_counter()
+        t = int(t2 - t1)
+        cost_path = self.get_new_cost(self.vertex[index], self.s_goal)
 
-        self.plotting.animation(self.vertex, self.path, "rrt*, N = " + str(self.iter_max))
+        self.plotting.animation(self.vertex, self.path,
+                                "rrt*, r = " + str(self.search_radius) + ", t = " + str(t) + ", c = " + str(int(cost_path)))
 
     def new_state(self, node_start, node_goal):
         dist, theta = self.get_distance_and_angle(node_start, node_goal)

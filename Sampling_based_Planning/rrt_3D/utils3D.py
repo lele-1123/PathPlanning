@@ -1,13 +1,13 @@
 import numpy as np
 from numpy.matlib import repmat
-import pyrr as pyrr
+# import pyrr as pyrr
 from collections import deque
 
-import os
-import sys
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../Sampling_based_Planning/")
-from rrt_3D.plot_util3D import visualization
+# import os
+# import sys
+#
+# sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../Sampling_based_Planning/")
+from Sampling_based_Planning.rrt_3D.plot_util3D import visualization
 
 
 def getRay(x, y):

@@ -1,7 +1,7 @@
 """
 RRT_star 2D
 @author: lele li
-    更改说明：将节点到起点的成本设为节点的成员变量，减小计算时间
+    更改说明：在rrt_star2.py后，更改node_neighbor的碰撞检测位置，试图进一步减小计算时间
 """
 
 import math
@@ -48,8 +48,8 @@ class RrtStar:
             node_near = self.nearest_neighbor(self.vertex, node_rand)       # 在树中选择距离随机点最近的点 =4
             node_new = self.new_state(node_near, node_rand)                 # 确定输入，产生由node_near到node_rand的新点 =5
 
-            if k % 500 == 0:
-                print(k)
+            # if k % 500 == 0:
+            #     print(k)
 
             if node_new and not self.utils.is_collision(node_near, node_new):  # node_near到node_new是否与障碍物碰撞 =6
                 neighbor_index = self.find_near_neighbor(node_new)          # 选取node_new附近的点集, 且不会发生碰撞 =7
@@ -64,7 +64,7 @@ class RrtStar:
         index = self.search_goal_parent()
         self.s_goal.parent = self.vertex[index]
         self.s_goal.cost = self.get_new_cost(self.s_goal.parent, self.s_goal)
-        self.path = self.extract_path(self.s_goal)
+        self.path = self.extract_path()
         t2 = time.perf_counter()
         # print("the cost of path is " + str(self.s_goal.cost))
         t = int(t2 - t1)
@@ -84,20 +84,22 @@ class RrtStar:
         return node_new
 
     def choose_parent(self, node_new, neighbor_index):
-        cost = [self.get_new_cost(self.vertex[i], node_new) for i in neighbor_index]
-        cost_index = int(np.argmin(cost))
-
-        if node_new.cost > cost[cost_index]:
-            cost_min_index = neighbor_index[cost_index]
-            node_new.parent = self.vertex[cost_min_index]
-            node_new.cost = cost[cost_index]
+        for i in neighbor_index:
+            node_neighbor = self.vertex[i]
+            c_new = self.get_new_cost(node_neighbor, node_new)
+            if c_new < node_new.cost:
+                if self.utils.is_collision(node_neighbor, node_new):
+                    neighbor_index.remove(i)
+                else:
+                    node_new.parent = node_neighbor
+                    node_new.cost = c_new
 
     def rewire(self, node_new, neighbor_index):
         for i in neighbor_index:
             node_neighbor = self.vertex[i]
             cost_rewire = self.get_new_cost(node_new, node_neighbor)
 
-            if node_neighbor.cost > cost_rewire:
+            if node_neighbor.cost > cost_rewire and not self.utils.is_collision(node_neighbor, node_new):
                 node_neighbor.parent = node_new
                 node_neighbor.cost = cost_rewire
 
@@ -134,8 +136,7 @@ class RrtStar:
         r = min(self.search_radius * math.sqrt((math.log(n) / n)), self.step_len)
 
         dist_table = [math.hypot(nd.x - node_new.x, nd.y - node_new.y) for nd in self.vertex]
-        dist_table_index = [ind for ind in range(len(dist_table)) if dist_table[ind] <= r and
-                            not self.utils.is_collision(node_new, self.vertex[ind])]
+        dist_table_index = [ind for ind in range(n - 1) if dist_table[ind] <= r]
 
         return dist_table_index
 
@@ -169,9 +170,9 @@ class RrtStar:
     #             node_c.Cost = self.get_new_cost(node, node_c)
     #             OPEN.put(node_c)
 
-    def extract_path(self, node_end):  # 提取路径
+    def extract_path(self):  # 提取路径
         path = [(self.s_goal.x, self.s_goal.y)]
-        node_now = node_end
+        node_now = self.s_goal
 
         while node_now.parent is not None:
             node_now = node_now.parent
@@ -188,7 +189,7 @@ class RrtStar:
 
 def main():
     x_start = (18, 8)  # Starting node
-    x_goal = (37, 18)  # Goal node
+    x_goal = (39, 18)  # Goal node
 
     rrt_star = RrtStar(x_start, x_goal, 15, 0.10, 30, 8000)
     rrt_star.planning()

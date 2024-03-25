@@ -1,10 +1,8 @@
 """
 INFORMED_RRT_STAR 2D
-@author: huiming zhou
+@author: lele li
 """
 
-# import os
-# import sys
 import math
 import random
 import numpy as np
@@ -12,9 +10,6 @@ import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as Rot
 import matplotlib.patches as patches
 import time
-
-# sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
-#                 "/../../Sampling_based_Planning/")
 
 from Sampling_based_Planning.rrt_2D import env, plotting, utils
 
@@ -24,6 +19,7 @@ class Node:
         self.x = n[0]
         self.y = n[1]
         self.parent = None
+        self.cost = 0.0
 
 
 class IRrtStar:
@@ -48,68 +44,68 @@ class IRrtStar:
         self.obs_rectangle = self.env.obs_rectangle
         self.obs_boundary = self.env.obs_boundary
 
-        self.V = [self.x_start]
+        self.V = [self.x_start]  # V 相当于前面代码中的vertex
         self.X_soln = set()
         self.path = None
 
     def init(self):
-        cMin, theta = self.get_distance_and_angle(self.x_start, self.x_goal)
-        C = self.RotationToWorldFrame(self.x_start, self.x_goal, cMin)
-        xCenter = np.array([[(self.x_start.x + self.x_goal.x) / 2.0],
+        c_min, theta = self.get_distance_and_angle(self.x_start, self.x_goal)
+        C = self.RotationToWorldFrame(self.x_start, self.x_goal, c_min)
+        x_center = np.array([[(self.x_start.x + self.x_goal.x) / 2.0],
                             [(self.x_start.y + self.x_goal.y) / 2.0], [0.0]])  # 3*1的矩阵
-        x_best = self.x_start  # ？
 
-        return theta, cMin, xCenter, C, x_best
+        return theta, c_min, x_center, C
 
     def planning(self):
         t1 = time.perf_counter()
-        theta, dist, x_center, C, x_best = self.init()
+        theta, dist, x_center, C = self.init()  # dist 是起点到终点的直线距离，是论文中的c_min
         c_best = np.inf
 
         for k in range(self.iter_max):
-            if self.X_soln:
-                cost = {node: self.Cost(node) for node in self.X_soln}
-                x_best = min(cost, key=cost.get)
-                c_best = cost[x_best]
-
             x_rand = self.Sample(c_best, dist, x_center, C)
             x_nearest = self.Nearest(self.V, x_rand)
             x_new = self.Steer(x_nearest, x_rand)
 
             if x_new and not self.utils.is_collision(x_nearest, x_new):
                 X_near = self.Near(self.V, x_new)
-                c_min = self.Cost(x_nearest) + self.Line(x_nearest, x_new)
                 self.V.append(x_new)
+                x_new.parent = x_nearest
+                x_new.cost = self.get_new_cost(x_nearest, x_new)  # 这里是伪代码的c_min
 
                 # choose parent
                 for x_near in X_near:
-                    c_new = self.Cost(x_near) + self.Line(x_near, x_new)
-                    if c_new < c_min:
-                        x_new.parent = x_near
-                        c_min = c_new
+                    c_new = self.get_new_cost(x_near, x_new)
+                    if c_new < x_new.cost:
+                        if self.utils.is_collision(x_near, x_new):
+                            X_near.remove(x_near)
+                        else:
+                            x_new.parent = x_near
+                            x_new.cost = c_new
 
                 # rewire
                 for x_near in X_near:
-                    c_near = self.Cost(x_near)
-                    c_new = self.Cost(x_new) + self.Line(x_new, x_near)
-                    if c_new < c_near:
+                    c_near = x_near.cost
+                    c_new = self.get_new_cost(x_new, x_near)
+                    if c_new < c_near and not self.utils.is_collision(x_near, x_new):
                         x_near.parent = x_new
+                        x_near.cost = c_new
 
                 if self.InGoalRegion(x_new):
                     if not self.utils.is_collision(x_new, self.x_goal):
                         self.X_soln.add(x_new)
-                        # new_cost = self.Cost(x_new) + self.Line(x_new, self.x_goal)
-                        # if new_cost < c_best:
-                        #     c_best = new_cost
-                        #     x_best = x_new
+                        new_cost = self.get_new_cost(x_new, self.x_goal)
+                        if new_cost < c_best:
+                            c_best = new_cost
+                            self.x_goal.parent = x_new
+                            self.x_goal.cost = new_cost
 
-            if k % 20 == 0:
-                self.animation(x_center=x_center, c_best=c_best, dist=dist, theta=theta)
+            # if k % 20 == 0:
+            #     self.animation(x_center=x_center, c_best=c_best, dist=dist, theta=theta)
 
-        self.path = self.ExtractPath(x_best)
+        self.path = self.ExtractPath()
         t2 = time.perf_counter()
         t = int(t2 - t1)
-        print("the cost of path is " + str(c_best))
+        print("the cost of path is " + str(self.x_goal.cost))
         print("the time is " + str(t) + " seconds")
         self.animation(x_center=x_center, c_best=c_best, dist=dist, theta=theta)
         plt.plot([x for x, _ in self.path], [y for _, y in self.path], '-r')
@@ -127,11 +123,11 @@ class IRrtStar:
 
     def Near(self, nodelist, node):
         n = len(nodelist) + 1
-        r = 50 * math.sqrt((math.log(n) / n))
+        # r = 50 * math.sqrt((math.log(n) / n))  # 为什么确定为这个？
+        r = min(self.search_radius * math.sqrt((math.log(n) / n)), self.step_len)
 
         dist_table = [(nd.x - node.x) ** 2 + (nd.y - node.y) ** 2 for nd in nodelist]
-        X_near = [nodelist[ind] for ind in range(len(dist_table)) if dist_table[ind] <= r ** 2 and
-                  not self.utils.is_collision(nodelist[ind], node)]
+        X_near = [nodelist[ind] for ind in range(n - 1) if dist_table[ind] <= r ** 2]
 
         return X_near
 
@@ -170,14 +166,13 @@ class IRrtStar:
 
         return self.x_goal
 
-    def ExtractPath(self, node):
+    def ExtractPath(self):  # 提取路径
         path = [[self.x_goal.x, self.x_goal.y]]
+        node_now = self.x_goal
 
-        while node.parent:
-            path.append([node.x, node.y])
-            node = node.parent
-
-        path.append([self.x_start.x, self.x_start.y])
+        while node_now.parent is not None:
+            node_now = node_now.parent
+            path.append((node_now.x, node_now.y))
 
         return path
 
@@ -206,6 +201,14 @@ class IRrtStar:
     @staticmethod
     def Line(x_start, x_goal):
         return math.hypot(x_goal.x - x_start.x, x_goal.y - x_start.y)
+
+    def get_new_cost(self, node_start, node_end):
+        dist = math.hypot(node_end.x - node_start.x, node_end.y - node_start.y)
+
+        if node_start == 0:
+            return self.Cost(node_start) + dist
+
+        return node_start.cost + dist
 
     def Cost(self, node):
         if node == self.x_start:
@@ -303,7 +306,7 @@ def main():
     x_start = (18, 8)  # Starting node
     x_goal = (39, 18)  # Goal node
 
-    rrt_star = IRrtStar(x_start, x_goal, 1, 0.10, 12, 3000)
+    rrt_star = IRrtStar(x_start, x_goal, 15, 0.10, 30, 3000)
     rrt_star.planning()
 
 
